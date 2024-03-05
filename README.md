@@ -1,3 +1,4 @@
-有问题待处理，
+请使用node版本
 
-可以使用https://github.com/smallmuou/xmlyfetcher/blob/master/xmlyfetcher
+fork from 
+https://github.com/smallmuou/xmlyfetcher/blob/master/xmlyfetcher
