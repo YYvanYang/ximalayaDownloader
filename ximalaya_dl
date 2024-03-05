@@ -57,7 +57,6 @@ fetch_track_by_id() {
     fi
 }
 
-# 为了下载一个专辑的所有音轨，我们需要先获取专辑的总音轨数，然后计算总页数（因为每页有固定数量的音轨），最后遍历每一页下载所有音轨。
 fetch_album_track_count() {
     local album_id=\$1
     local content=$(fetch_with_retry "https://www.ximalaya.com/revision/album/v1/getTracksList?albumId=$album_id&pageNum=1&pageSize=1")
