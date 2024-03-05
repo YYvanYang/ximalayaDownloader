@@ -1,0 +1,129 @@
+
+#!/bin/bash
+
+# 检查必需命令
+for cmd in curl jq wget; do
+    command -v $cmd >/dev/null 2>&1 || { echo >&2 "需要安装命令 $cmd。"; exit 1; }
+done
+
+VERSION=1.0.0
+AUTHOR="Yvan Yang"
+PAGE_SIZE=30
+dst_dir="."
+
+usage() {
+    cat << EOF
+用法: $(basename \$0) [选项] albumId 类型 [类型参数1 [类型参数2 ...]]
+版本: $VERSION
+作者: $AUTHOR
+...
+EOF
+    exit 1
+}
+
+# 使用 jq 解析 JSON
+decode_json() {
+    jq -r "\$1" <<< "\$2"
+}
+
+fetch_with_retry() {
+    local url=\$1
+    local max_attempts=5
+    local attempt=0
+    local delay=5
+
+    while [[ $attempt -lt $max_attempts ]]; do
+        local result=$(curl -s "$url")
+        if [[ $? -eq 0 ]]; then
+            echo "$result"
+            return 0
+        else
+            attempt=$((attempt + 1))
+            sleep $delay
+        fi
+    done
+    return 1
+}
+
+fetch_track_by_id() {
+    local track_id=\$1
+    local result=$(fetch_with_retry "http://mobile.ximalaya.com/v1/track/baseInfo?device=iPhone&trackId=$track_id")
+    if [[ -n "$result" ]]; then
+        local title=$(decode_json '.title' "$result" | sed 's/[\/:*?"<>|]//g')  # 移除文件名中的非法字符
+        local url64=$(decode_json '.playUrl64' "$result" | sed 's/\\//g')
+        [[ -n "$url64" ]] && wget "$url64" -O "$dst_dir/${title}.mp3" || echo "无法获取音轨 $track_id 的下载链接。"
+    else
+        echo "音轨ID $track_id 不存在。"
+    fi
+}
+
+# 为了下载一个专辑的所有音轨，我们需要先获取专辑的总音轨数，然后计算总页数（因为每页有固定数量的音轨），最后遍历每一页下载所有音轨。
+fetch_album_track_count() {
+    local album_id=\$1
+    local content=$(fetch_with_retry "https://www.ximalaya.com/revision/album/v1/getTracksList?albumId=$album_id&pageNum=1&pageSize=1")
+    local count=$(decode_json '.data.trackTotalCount' "$content")
+    echo $count
+}
+
+fetch_tracks_by_page() {
+    local album_id=\$1
+    local page_num=\$2
+    local content=$(fetch_with_retry "https://www.ximalaya.com/revision/album/v1/getTracksList?albumId=$album_id&pageNum=$page_num&pageSize=$PAGE_SIZE")
+    local track_ids=$(decode_json '.data.tracks[].trackId' "$content")
+    for track_id in $track_ids; do
+        fetch_track_by_id $track_id
+    done
+}
+
+fetch_all_tracks() {
+    local album_id=\$1
+    local total_tracks=$(fetch_album_track_count $album_id)
+    local total_pages=$((total_tracks / PAGE_SIZE))
+    ((total_tracks % PAGE_SIZE > 0)) && ((total_pages++))
+    for ((page=1; page<=total_pages; page++)); do
+        fetch_tracks_by_page $album_id $page
+    done
+}
+
+
+while getopts 'o:h' arg; do
+    case $arg in
+        h)
+            usage
+            ;;
+        o)
+           dst_dir=$OPTARG
+            ;;
+        ?)
+            usage
+            ;;
+    esac
+done
+
+shift $((OPTIND - 1))
+
+[[ $# -lt 2 ]] && usage
+
+album_id=\$1
+type=\$2
+shift 2
+
+case $type in
+    all)
+        fetch_all_tracks $album_id
+        ;;
+    page)
+        for page_num in "$@"; do
+            fetch_tracks_by_page $album_id $page_num
+        done
+        ;;
+    track)
+        for track_id in "$@"; do
+            fetch_track_by_id $track_id
+        done
+        ;;
+    *)
+        echo "不支持的类型: $type"
+        usage
+        ;;
+esac
