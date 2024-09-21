@@ -6,13 +6,28 @@ const path = require("path");
 const PAGE_SIZE = 30;
 let dstDir = ".";
 
-// 使用 axios 封装的 HTTP GET 请求，带重试功能
+// 使用 axios 封装的 HTTP GET 请求，带重试功能和认证
 const fetchWithRetry = async (url, maxAttempts = 5, delay = 5000) => {
+  const headers = {
+    'accept': '*/*',
+    'accept-encoding': 'gzip, deflate, br, zstd',
+    'accept-language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+    'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+    'xm-sign': 'D26OshXVxP4LrRvG9KJdsAheg3JgaaKARkRkU6nXBoUc4Xe3&&i_k7yhIR_560Tb3vwjggNux1i6e-5AViI_OJGALTmrE_1',
+    'referer': 'https://www.ximalaya.com/album/53287048'
+  };
+
+  const cookies = '_xmLog=h5&ffcc3e35-0323-4001-a28f-1f64f4bddde4&process.env.sdkVersion; xm-page-viewid=ximalaya-web; DATE=1726907667689; impl=www.ximalaya.com.login; wfp=ACMwYjQzMGQ3MGEwMWZiZTRlxzHyS3ahlzJ4bXdlYl93d3c; crystal=U2FsdGVkX1+iXQM9WFmqwmAgJzVGmBcGVbxa8kLYDzgyH1EjnxoLX5t40GPlkjDtXswaGmC1AM43NiEU9YmVD5ixBmX4qCuOQ4fZaG+AcWLVfCew0VqAljVgFb8uR1S+m9UyyRVQkIN5xmzRIz3PYYrlOOpUOycK7OWsz2QiknDQ+WJcFL5eUfdV0AR7d7kln6baX62EXn7V3k9obxhVjsFZnflAK276AVsiyUGs/s+6heg9OHWBN7sFGKvmj5Id; Hm_lvt_4a7d8ec50cfd6af753c4f8aee3425070=1726907714; HMACCOUNT=B86700D4AC2FAD27; 1&remember_me=y; 1&_token=186488793&92EF38B0240NC08CE0499331D738228C665BA6B07DEE2C81613CD45351E4EC9B707980EF05DC127M2D817B53A2DBD21_; 1_l_flag=186488793&92EF38B0240NC08CE0499331D738228C665BA6B07DEE2C81613CD45351E4EC9B707980EF05DC127M2D817B53A2DBD21__2024-09-2116:54:35; Hm_lpvt_4a7d8ec50cfd6af753c4f8aee3425070=1726908878; web_login=1726908984227; cmci9xde=U2FsdGVkX18wz+ouVWH+5nhoc72Mw32+iGf9CLXNubvcuewfJ4KbE6deblW7fADSJjCF2SMg9qhRMxeO+7U5dw==; pmck9xge=U2FsdGVkX1/ABd4QwmrIoF6IpILWbOY04gOj+KhQX0g=; assva6=U2FsdGVkX18r1t3WQYXC4GU/U8o8CDBUS0MWrkf9qGQ=; assva5=U2FsdGVkX18uhALIRv5nyY+vwMsCki/8fXB5PpdeEAnC5LHh77P1Mhu4mPXpNSNR6QWmPFVK4G0qudlbg/e2AA==; vmce9xdq=U2FsdGVkX1+7kSGSju1QuubCiUbWCDwa2UuwjcowkOBTvoSuLU8JZazVefCoRoA03nJSe3+Jd5mBJM/b8mWSnhANSFrKlStRBYTLnoVdmh+fNNIR1+tYXE66PKLwhBnNZOIXqUWzMtuRqI8X5ZyTfc2nFahp/rYA4rWZj87dzPc=';
+
+  headers['cookie'] = cookies;
+
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const response = await axios.get(url);
+      const response = await axios.get(url, { headers });
       return response.data;
     } catch (error) {
+      console.log(`第 ${attempt + 1} 次请求失败: ${error.message}`);
       if (attempt === maxAttempts - 1) throw error;
       await new Promise((resolve) => setTimeout(resolve, delay));
     }

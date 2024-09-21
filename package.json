@@ -4,6 +4,7 @@
   "description": "",
   "main": "fetchXimalaya.js",
   "scripts": {
+    "start": "node fetchXimalaya.js 53287048 all -o temp",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
